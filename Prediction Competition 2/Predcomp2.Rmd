@@ -1,0 +1,220 @@
+---
+title: "Prediction Competition 2"
+output: pdf_document
+---
+
+Anonymized name: Sukuna
+$R^2 = 0.40$
+$MSE = 1.06$
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Importing libraries
+```{r, include=FALSE}
+library(readr)
+library(ggplot2)
+library(tree)
+library(randomForest)
+library(rpart)
+```
+
+## Importing data
+```{r}
+setwd('/Users/andrew/Downloads/UW courses/ECON 626/Prediction Competition 2')
+train_housing_data = read.csv('ECON626_PC2_train.csv')
+test_housing_data = read.csv('ECON626_PC2_test.csv')
+```
+
+### Viewing our data
+```{r}
+names(train_housing_data) <- lapply(names(train_data), tolower)
+head_train = head(train_housing_data)
+print(head_train)
+```
+
+```{r}
+head_test = head(test_housing_data)
+print(head_test)
+```
+```{r}
+#Count of na
+sum(is.na(train_housing_data))
+sum(is.na(test_housing_data))
+
+#Searching for na values
+which(is.na(train_housing_data))
+which(is.na(test_housing_data))
+```
+
+```{r}
+set.seed(21108082)
+#set seed for reproducability
+
+help(tree)
+
+train <- sample(1:nrow(train_housing_data), nrow(train_housing_data) *.8)
+tree_housing <- tree(logvalue ~ ., train_housing_data , subset = train)
+model = summary(tree_housing)
+model
+```
+
+```{r}
+plot(tree_housing)
+text(tree_housing , pretty = 0)
+```
+
+```{r}
+tree_housing
+```
+
+```{r}
+cv_housing <- cv.tree(tree_housing)
+plot(cv_housing$size , cv_housing$dev, type = "b")
+```
+
+
+```{r}
+yhat <- predict(tree_housing , newdata = train_housing_data[-train , ])
+
+housing_test <- train_housing_data[-train, "logvalue"]
+
+plot_data <- data.frame(yhat, housing_test)
+
+ggplot(plot_data, aes(x = housing_test, y = yhat)) +
+  geom_point() +  # Scatter plot
+  geom_abline(intercept = 0, slope = 1, color = 'red', linetype = "dashed", show_guide=TRUE) +  # 45-degree red line
+  ggtitle("Actual vs Predicted Values") +  # Add title
+  xlab("Actual values") +  # Add x-axis label
+  ylab("Predicted values") +  # Add y-axis label
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+```{r}
+r2 = 1-(sum(model$residuals^2))/sum((train_housing_data$logvalue-mean(train_housing_data$logvalue))^2)
+
+MSE = mean((yhat - housing_test)^2)
+print(MSE)
+```
+
+
+```{r}
+
+bag_housing <- randomForest(logvalue ~ ., data=train_housing_data , subset = train, mtry = 12, importance = TRUE)
+
+class(bag_housing)
+
+var_importance <- importance(bag_housing)
+
+var_importance
+
+overall_importance <- sort(var_importance[, 1], decreasing = T)
+
+
+barplot(overall_importance, 
+        names.arg = colnames(train_housing_data)[-ncol(train_housing_data)], 
+        las = 1,  # Set las to 1 for horizontal labels
+        main = "Variable Importance Plot", 
+        col = "red",  # Set color to red
+        cex.names = 0.8,
+        horiz = TRUE,  # Set horiz to TRUE for horizontal bars
+        xlim = c(0, 100)
+)
+
+```
+
+
+
+```{r}
+# Splitting the training data into two sets for model evaluation
+set.seed(21108082)
+train_set <- sample(1:nrow(train_housing_data), nrow(train_housing_data) * 0.2)
+test_set <- setdiff(1:nrow(train_housing_data), train_set)
+
+train_data <- train_housing_data[train_set, ]
+test_data <- train_housing_data[test_set, ]
+
+# Initialize vectors to store training and test errors
+train_errors <- vector('numeric', length = 10)
+test_errors <- vector('numeric', length = 10)
+
+# Loop through different tree depths
+for (depth in 1:10) {
+  # Fit a tree with varying depth
+  tree_model <- rpart(logvalue ~ ., train_data, subset = train_set, control = list(maxdepth = depth))
+  
+  # Predict on training set
+  yhat_train <- predict(tree_model, newdata = train_data)
+  train_errors[depth] <- mean((yhat_train - train_data$logvalue)^2)
+  
+  # Predict on test set
+  yhat_test <- predict(tree_model, newdata = test_data)
+  test_errors[depth] <- mean((yhat_test - test_data$logvalue)^2)
+}
+
+# Plotting the errors as a function of model depth
+plot(1:10, train_errors, type = 'b', col = 'blue', pch = 16, xlab = 'Tree Depth', ylab = 'Mean Squared Error', main = 'Training and Test Errors vs. Tree Depth',ylim = c(0.8, 1.3)) +
+lines(1:10, test_errors, type = 'b', col = 'red', pch = 16)
+legend("topright", legend = c("Training Error", "Test Error"), col = c("blue", "red"), pch = 16)
+
+
+```
+
+
+```{r}
+set.seed(21108082)
+
+housing_test <- train_housing_data[-train, ]
+dim(housing_test)
+house_values <- train_housing_data$LOGVALUE[-tograin]
+length(house_values)
+#make sure both = 4000 
+
+pred_tree <- predict(tree_housing , housing_test)
+table(pred_tree , house_values)
+
+
+```
+
+
+```{r}
+
+test_yhat <- predict(tree_housing , newdata = test_housing_data)
+
+```
+
+
+
+
+3. Graphs for Q2, Q3 and Q4 as calculated from the training data.
+4. Screenshot of an example from ChatGPT/GPT4 interaction.
+5. The rest of PDF must include code for Q1, Q2 and Q3 answers
+
+```{r, include=FALSE}
+# Writing the predictions to a csv
+
+predictions <- test_yhat
+  
+r2 <- r2 
+
+# Creating a dataframe with a single column of mixed data types
+df <- data.frame(Column = c(21108082, "Sukuna", r2, predictions), stringsAsFactors = FALSE)
+
+write.table(df, "/Users/andrew/Downloads/UW courses/ECON 626/Prediction Competition 2/pc2.csv", sep=",",row.names=FALSE, col.names=FALSE)
+
+
+#In general:
+
+#x <- c(1, 2, 3, 4, 5)
+
+# Creating a dataframe with a single column of mixed data types
+#df <- data.frame(Column = c(st number, "Anonymized name", x), stringsAsFactors = FALSE)
+
+#write.table(df, "filelocation/filename.csv", sep=",",row.names=FALSE, col.names=FALSE)
+
+```
